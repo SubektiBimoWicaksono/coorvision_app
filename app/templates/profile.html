@@ -1,0 +1,117 @@
+{% extends 'components/base.html' %}
+
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="page-header d-print-none">
+        <div class="container-xl">
+            <div class="row g-2 align-items-center">
+                <div class="col">
+                    <h2 class="page-title">
+                        Account Settings
+                    </h2>
+                    <div class="text-muted mt-1">Manage your profile, account settings, and password.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="page-body">
+        <div class="container-xl">
+            
+            {# Tampilkan pesan flash di atas #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible" role="alert">
+                            <div>{{ message }}</div>
+                            <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <span class="avatar avatar-xl mb-3 rounded-circle">{{ display_name[0]|upper }}</span>
+                            <h3 class="m-0 mb-1">{{ display_name }}</h3>
+                            <div class="text-muted">{{ user.role|title }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    <form method="POST" action="{{ url_for('settings.profile') }}" class="vstack gap-4">
+                        
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="card-title">Account Information</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="username" name="username" value="{{ form_data.get('username') if form_data else user.username }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" value="{{ form_data.get('email') if form_data else user.email }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="card-title">Change Password</h4>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small">Leave all password fields blank if you do not wish to change your password.</p>
+                                <div class="mb-3">
+                                    <label for="old_password" class="form-label">Old Password</label>
+                                    <input type="password" class="form-control" id="old_password" name="old_password" value="{{ form_data.get('old_password') if form_data else '' }}">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="new_password" class="form-label">New Password</label>
+                                    <input type="password" class="form-control" id="new_password" name="new_password">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if (user.role == 'admin' and company) or (user.role == 'employee' and personnel) %}
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="card-title">Additional Information</h4>
+                            </div>
+                            <div class="card-body">
+                                {% if user.role == 'admin' and company %}
+                                <div class="mb-3">
+                                    <label for="company_name" class="form-label">Company Name</label>
+                                    <input type="text" class="form-control" id="company_name" name="company_name" value="{{ form_data.get('company_name') if form_data else company.name }}">
+                                </div>
+                                {% endif %}
+
+                                {% if user.role == 'employee' and personnel %}
+                                <div class="mb-3">
+                                    <label for="personnel_name" class="form-label">Your Name (Personnel)</label>
+                                    <input type="text" class="form-control" id="personnel_name" name="personnel_name" value="{{ form_data.get('personnel_name') if form_data else personnel.name }}">
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex">
+                            <button type="submit" class="btn btn-primary ms-auto">Update Profile</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

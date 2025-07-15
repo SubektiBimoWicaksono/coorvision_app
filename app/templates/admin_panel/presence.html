@@ -1,0 +1,197 @@
+{% extends 'components/base.html' %}
+
+{% block title %}
+Presence Report
+{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="container-xl">
+        <div class="header mb-4">
+            <div class="row align-items-center justify-content-between gx-4">
+                <div class="col-auto">
+                    <div class="page-pretitle">Employees</div>
+                    <h2 class="page-title">Employee Attendance</h2>
+                </div>
+                <div class="col-auto ml-auto d-print-none">
+                    <a href="#" class="btn btn-white" data-toggle="modal" data-target="#modal-export">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z"></path><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path><polyline points="7 11 12 16 17 11"></polyline><line x1="12" y1="4" x2="12" y2="16"></line></svg>
+                        Export
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="row row-deck row-cards">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body border-bottom py-3">
+                        <div class="d-flex mb-4">
+                            <form method="GET" action="{{ url_for('admin.presence_view') }}" id="filter-form">
+                                <div class="form-row align-items-end">
+                                    <div class="col-auto mr-2">
+                                        <label for="filter-date" class="form-label">Date</label>
+                                        <input type="date" id="filter-date" name="filter_date" class="form-control calendar-range" placeholder="Date" value="{{ filter_date_str if filter_date_str else today_date_str }}" />
+                                    </div>
+                                    <div class="col-auto mr-2">
+                                        <label for="filter-personnel" class="form-label">Employee</label>
+                                        <select id="filter-personnel" name="filter_personnel_id" class="form-control">
+                                            <option value="">All Employees</option>
+                                            {% for p in personnel_list_for_dropdown %}
+                                            <option value="{{ p.id }}" {% if p.id|string == filter_personnel_id|string %}selected{% endif %}>{{ p.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="submit" class="btn btn-primary mt-1">Filter</button>
+                                    </div>
+                                    {# Tambahkan input hidden untuk menjaga filter saat navigasi halaman #}
+                                    <input type="hidden" name="page" value="{{ pagination.page }}">
+                                </div>
+                            </form>
+                        </div>
+                        <div class="d-flex">
+                            <div class="text-muted">Show <span>{{ pagination.per_page }}</span> entries per page</div> {# Menggunakan pagination.per_page #}
+                            {# Jika Anda ingin fitur search frontend, biarkan ini. Untuk backend search, ini perlu diubah. #}
+                            <div class="ml-auto text-muted">Search: <div class="ml-2 d-inline-block"><input type="text" class="form-control form-control-sm"></div></div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table card-table table-vcenter text-nowrap datatable text-center">
+                            <thead>
+                                <tr>
+                                    <th class="w-1">No.</th>
+                                    <th>Employee ID</th>
+                                    <th>Employee Name</th>
+                                    <th>Attendance Time</th>
+                                    <th>Attendance Image</th>
+                                    <th>Status</th>
+                                    <th>Leaving Time</th>
+                                    <th>Leaving Image</th>
+                                    <th>Work Hours</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="presence-table-body">
+                                {# Menggunakan pagination.items untuk data yang ditampilkan #}
+                                {% for entry in pagination.items %}
+                                <tr>
+                                    <td>{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td> {# Nomor urut yang benar #}
+                                    <td>{{ entry.personnel_id }}</td>
+                                    <td>{{ entry.name }}</td>
+                                    <td>{{ entry.attended_time }}</td>
+                                    <td>
+                                        {% if entry.attendance_image_path %}
+                                        <img src="{{ url_for('static', filename=entry.attendance_image_path.lstrip('/')) }}" class="img-fluid" width="35"/>
+                                        {% else %}
+                                        No image
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if entry.status == 'ONTIME' %}
+                                            <span class="badge bg-success-lt">ONTIME</span>
+                                        {% elif entry.status == 'LEAVE' %}
+                                            <span class="badge bg-info-lt">PULANG</span>
+                                        {% elif entry.status == 'LATE' %}
+                                            <span class="badge bg-warning-lt">LATE</span>
+                                        {% elif entry.status == 'OUT_OF_ATTENDANCE_TIME' %}
+                                            <span class="badge bg-danger-lt">OUT OF TIME</span>
+                                        {% elif entry.status == 'BELUM ABSEN' %}
+                                            <span class="badge bg-secondary-lt">BELUM ABSEN</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-muted">{{ entry.status | title if entry.status else 'N/A' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ entry.leave_time }}</td>
+                                    <td>
+                                        {% if entry.leaving_image_path %}
+                                        <img src="{{ url_for('static', filename=entry.leaving_image_path.lstrip('/')) }}" class="img-fluid" width="35"/>
+                                        {% else %}
+                                        No image
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ entry.work_hours_str if entry.work_hours_str is not none else 'N/A' }}</td>
+                                    <td>{{ entry.notes if entry.notes else '' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="11" class="text-center">No data available for the selected filters.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer d-flex align-items-center">
+                        <p class="m-0 text-muted">Showing <span>{{ (pagination.page - 1) * pagination.per_page + 1 }}</span> to <span>{{ (pagination.page - 1) * pagination.per_page + pagination.items|length }}</span> of <span>{{ pagination.total }}</span> entries</p>
+                        <ul class="pagination m-0 ml-auto">
+                            {# Link Previous #}
+                            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('admin.presence_view', page=pagination.prev_num, filter_date=filter_date_str, filter_personnel_id=filter_personnel_id) }}" tabindex="-1" aria-disabled="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><polyline points="15 6 9 12 15 18"></polyline></svg>
+                                    prev
+                                </a>
+                            </li>
+                            {# Loop untuk nomor halaman #}
+                            {% for p_num in pagination.iter_pages() %}
+                                {% if p_num %}
+                                    <li class="page-item {% if p_num == pagination.page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('admin.presence_view', page=p_num, filter_date=filter_date_str, filter_personnel_id=filter_personnel_id) }}">{{ p_num }}</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled"><a class="page-link" href="#">...</a></li>
+                                {% endif %}
+                            {% endfor %}
+                            {# Link Next #}
+                            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('admin.presence_view', page=pagination.next_num, filter_date=filter_date_str, filter_personnel_id=filter_personnel_id) }}">
+                                    next <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><polyline points="9 6 15 12 9 18"></polyline></svg>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal modal-blur fade" id="modal-export" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-body">
+                <div class="modal-title">Export to Excel</div>
+                <div>Are you sure you want to export the current view to Excel?</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link link-secondary mr-auto" data-dismiss="modal">Cancel</button>
+                <button onclick="downloadPresenceData()" type="button" class="btn btn-primary" data-dismiss="modal">Yes, export data</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function downloadPresenceData() {
+        const date = document.getElementById('filter-date').value;
+        const personnelId = document.getElementById('filter-personnel').value;
+        let url = "{{ url_for('admin.download_presence_excel') }}";
+        const params = new URLSearchParams();
+        if (date) {
+            params.append('filter_date', date);
+        }
+        if (personnelId && personnelId !== "") {
+            params.append('filter_personnel_id', personnelId);
+        }
+        if (params.toString()) {
+            url += `?${params.toString()}`;
+        }
+        window.location.href = url;
+    }
+
+    document.addEventListener('DOMContentLoaded', (event) => {
+        const dateInput = document.getElementById('filter-date');
+        if (!dateInput.value) {
+            dateInput.value = "{{ today_date_str }}";
+        }
+    });
+</script>
+{% endblock %}

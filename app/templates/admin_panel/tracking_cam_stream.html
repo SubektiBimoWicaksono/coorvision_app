@@ -1,0 +1,366 @@
+{% extends "components/base.html" %}
+{% block title %}Tracking Stream{% endblock %}
+
+{% block content %}
+<div class="content">
+  <div class="container-xl">
+    <div class="header mb-4">
+      <div class="row align-items-center justify-content-between gx-4">
+        <div class="col-auto">
+          <div class="page-pretitle">{{ company.name }}'s</div>
+          <h2 class="page-title">Tracking Stream</h2>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div id="stream-wrapper" style="display: flex; flex-wrap: wrap; gap: 1rem;">
+          
+          <div class="stream-block mb-4" id="stream-block-template" 
+               style="display: none; flex: 0 0 calc(50% - 0.5rem); /* 2 kolom, dikurangi setengah gap */ box-sizing: border-box;">
+            <div class="row">
+              <div class="col">
+                <div class="mb-3">
+                  <label class="form-label">Pilih Kamera:</label>
+                  <select class="form-select cameraSelect">
+                    <option value="">-- Silakan Pilih Kamera --</option>
+                    {% if tracking_cameras %}
+                      {% for cam in tracking_cameras %}
+                        <option value="{{ cam.id }}">{{ cam.cam_name }} (ID: {{ cam.id }} - {{ cam.feed_src }})</option>
+                      {% endfor %}
+                    {% else %}
+                      <option value="" disabled>Tidak ada kamera tersedia</option>
+                    {% endif %}
+                  </select>
+                </div>
+              </div>
+              <div class="col-auto">
+                 </div>
+            </div>
+            <div class="stream-container bg-dark text-center rounded position-relative" 
+                 style="min-height: 250px; /* Kurangi sedikit untuk tampilan 2 kolom */ display: flex; align-items: center; justify-content: center;">
+              <div class="spinner-border text-light loader" role="status" style="display: none;">
+                <span class="visually-hidden">Memuat Stream...</span>
+              </div>
+              <img class="imgStream" data-stream-url-template="{{ url_for('stream.predict_yolo_and_face_video', cam_id=0).replace('0', 'CAM_ID') }}"
+                style="width: 100%; max-height: 40vh; /* Sesuaikan max-height */ object-fit: contain; display: none; border-radius: 0.25rem;" alt="Live Stream">
+              <div class="stream-alert-box text-white p-3"></div>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+  <button type="button" class="btn btn-success btn-sm startStreamBtn">Start Stream</button>
+  <button type="button" class="btn btn-secondary btn-sm stopStreamBtn" style="display:none;">Stop Stream</button>
+  <button type="button" class="btn btn-sm btn-danger removeStreamBtn">Remove Stream</button>
+</div>
+          </div>
+          </div>
+
+        <button type="button" class="btn btn-primary mt-3" id="addStreamBtn">+ Add Stream</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  // Fungsi untuk memeriksa server dan reload halaman (sama untuk semua halaman yang membutuhkan)
+  let reloadCheckTimeoutId = null;
+  const CHECK_SERVER_DELAY_MS = 10000; // Tunggu 10 detik sebelum memeriksa server
+
+  function checkServerAndReloadPage(delayMs = CHECK_SERVER_DELAY_MS) {
+    clearTimeout(reloadCheckTimeoutId);
+    console.log(`Stream gagal total, server mungkin restart. Akan dicek dalam ${delayMs / 1000} detik untuk reload halaman.`);
+
+    reloadCheckTimeoutId = setTimeout(() => {
+      const pingUrl = "{{ url_for('stream.ping_server') }}"; // Pastikan endpoint ini ada di Flask
+      fetch(pingUrl)
+        .then(response => {
+          if (response.ok) {
+            console.log('Server terdeteksi aktif kembali. Me-reload halaman...');
+            window.location.reload();
+          } else {
+            console.log('Pengecekan server mengembalikan status error. Belum me-reload. Status:', response.status);
+          }
+        })
+        .catch(error => {
+          console.log('Pengecekan server gagal (kemungkinan error jaringan atau server masih down). Belum me-reload. Error:', error);
+        });
+    }, delayMs);
+  }
+
+  // Variabel spesifik untuk halaman Tracking Stream
+  const PERSISTED_STREAMS_KEY = 'trackingPageActiveStreams_v3';
+  const streamWrapper = document.getElementById('stream-wrapper');
+  const addStreamBtn = document.getElementById('addStreamBtn');
+  const streamBlockTemplate = document.getElementById('stream-block-template');
+
+  // Variabel untuk logika retry per blok
+  const MAX_STREAM_RETRIES_TRACKING = 3;
+  const STREAM_RETRY_DELAY_MS_TRACKING = 4000;
+  const blockRetryStates = new Map();
+
+  function saveStreamsState() {
+    const streamBlocks = document.querySelectorAll('#stream-wrapper .stream-block:not(#stream-block-template)');
+    const selectedCameraIds = Array.from(streamBlocks).map(block => {
+      return block.querySelector('.cameraSelect').value;
+    });
+    localStorage.setItem(PERSISTED_STREAMS_KEY, JSON.stringify(selectedCameraIds));
+  }
+
+  function stopStream(blockElement) {
+    const img = blockElement.querySelector('.imgStream');
+    const loader = blockElement.querySelector('.loader');
+    const alertBox = blockElement.querySelector('.stream-alert-box');
+    const startBtn = blockElement.querySelector('.startStreamBtn');
+    const stopBtn = blockElement.querySelector('.stopStreamBtn');
+    img.src = "";
+    img.style.display = 'none';
+    loader.style.display = 'none';
+    stopBtn.style.display = 'none';
+    startBtn.style.display = blockElement.querySelector('.cameraSelect').value ? 'inline-block' : 'none';
+    alertBox.innerHTML = '<div class="alert alert-info">Stream dihentikan.</div>';
+    // Bersihkan retry state
+    const retryState = blockRetryStates.get(blockElement);
+    if (retryState && retryState.retryTimeoutId) {
+      clearTimeout(retryState.retryTimeoutId);
+      retryState.currentRetryCount = 0;
+    }
+      // Tandai bahwa stop dilakukan oleh user
+  blockElement.isStoppedByUser = true;
+  }
+
+  function startStream(blockElement) {
+    const select = blockElement.querySelector('.cameraSelect');
+    const img = blockElement.querySelector('.imgStream');
+    const loader = blockElement.querySelector('.loader');
+    const alertBox = blockElement.querySelector('.stream-alert-box');
+    const streamUrlTemplate = img.dataset.streamUrlTemplate;
+    const camId = select.value;
+    const startBtn = blockElement.querySelector('.startStreamBtn');
+    const stopBtn = blockElement.querySelector('.stopStreamBtn');
+
+    if (!camId) {
+      alertBox.innerHTML = '<div class="alert alert-warning">Pilih kamera terlebih dahulu.</div>';
+      return;
+    }
+    if (!streamUrlTemplate || !streamUrlTemplate.includes("CAM_ID")) {
+      alertBox.innerHTML = '<div class="alert alert-danger">Konfigurasi URL stream template salah.</div>';
+      return;
+    }
+
+    loader.style.display = 'block';
+    alertBox.innerHTML = '';
+    img.style.display = 'none';
+    const newStreamUrl = streamUrlTemplate.replace('CAM_ID', camId) + `?t=${Date.now()}`;
+    img.src = newStreamUrl;
+    startBtn.style.display = 'none';
+    stopBtn.style.display = 'inline-block';
+
+    // Reset retry state
+    let retryState = blockRetryStates.get(blockElement);
+    if (!retryState) {
+      blockRetryStates.set(blockElement, { retryTimeoutId: null, currentRetryCount: 0 });
+      retryState = blockRetryStates.get(blockElement);
+    } else {
+      clearTimeout(retryState.retryTimeoutId);
+      retryState.currentRetryCount = 0;
+    }
+
+      // Reset flag stop by user
+  blockElement.isStoppedByUser = false;
+
+    img.onload = () => {
+      clearTimeout(retryState.retryTimeoutId);
+      retryState.currentRetryCount = 0;
+      loader.style.display = 'none';
+      img.style.display = 'block';
+      alertBox.innerHTML = '';
+      saveStreamsState();
+    };
+
+    img.onerror = () => {
+      clearTimeout(retryState.retryTimeoutId);
+      loader.style.display = 'none';
+      img.style.display = 'none';
+
+          // Jika user yang stop, jangan retry!
+    if (blockElement.isStoppedByUser) {
+      alertBox.innerHTML = '<div class="alert alert-info">Stream dihentikan.</div>';
+      stopBtn.style.display = 'none';
+      startBtn.style.display = 'inline-block';
+      return;
+    }
+
+      if (camId) {
+        if (retryState.currentRetryCount < MAX_STREAM_RETRIES_TRACKING) {
+          retryState.currentRetryCount++;
+          alertBox.innerHTML = `<div class="alert alert-warning">Stream terputus. Mencoba lagi ke ID ${camId}... (${retryState.currentRetryCount}/${MAX_STREAM_RETRIES_TRACKING})</div>`;
+          retryState.retryTimeoutId = setTimeout(() => {
+            if (blockElement.querySelector('.cameraSelect').value === camId) {
+              startStream(blockElement);
+            } else {
+              retryState.currentRetryCount = 0;
+            }
+          }, STREAM_RETRY_DELAY_MS_TRACKING);
+        } else {
+          alertBox.innerHTML = `<div class="alert alert-danger">Gagal memuat stream dari kamera ID ${camId} setelah ${MAX_STREAM_RETRIES_TRACKING} percobaan. Server mungkin tidak aktif.</div>`;
+          stopBtn.style.display = 'none';
+          startBtn.style.display = 'inline-block';
+          checkServerAndReloadPage();
+        }
+      }
+      saveStreamsState();
+    };
+  }
+
+  function createAndSetupStreamBlock(camIdToSelect = "") {
+    if (!streamBlockTemplate) {
+      console.error("Template blok stream tidak ditemukan!");
+      return null;
+    }
+    const clone = streamBlockTemplate.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.style.display = 'block';
+
+    const cameraSelect = clone.querySelector('.cameraSelect');
+    const removeBtn = clone.querySelector('.removeStreamBtn');
+    const startBtn = clone.querySelector('.startStreamBtn');
+    const stopBtn = clone.querySelector('.stopStreamBtn');
+    const img = clone.querySelector('.imgStream');
+    const loader = clone.querySelector('.loader');
+    const alertBox = clone.querySelector('.stream-alert-box');
+
+    // Inisialisasi state retry untuk blok baru ini
+    if (!blockRetryStates.has(clone)) {
+      blockRetryStates.set(clone, { retryTimeoutId: null, currentRetryCount: 0 });
+    }
+
+    const optionExists = Array.from(cameraSelect.options).some(opt => opt.value === camIdToSelect);
+    cameraSelect.value = optionExists ? camIdToSelect : "";
+
+    // Reset stream when camera changed
+    cameraSelect.addEventListener('change', function () {
+      stopStream(clone);
+      alertBox.innerHTML = '';
+      saveStreamsState();
+    });
+
+    // Start Stream button
+    startBtn.addEventListener('click', function () {
+      startStream(clone);
+    });
+
+    // Stop Stream button
+    stopBtn.addEventListener('click', function () {
+      stopStream(clone);
+    });
+
+    // Remove block
+    removeBtn.addEventListener('click', function() {
+      const existingRetryState = blockRetryStates.get(clone);
+      if (existingRetryState && existingRetryState.retryTimeoutId) {
+        clearTimeout(existingRetryState.retryTimeoutId);
+      }
+      blockRetryStates.delete(clone);
+      clone.remove();
+      saveStreamsState();
+      updateRemoveButtonVisibility();
+    });
+
+    // Inisialisasi tombol
+    startBtn.style.display = cameraSelect.value ? 'inline-block' : 'none';
+    stopBtn.style.display = 'none';
+
+    streamWrapper.appendChild(clone);
+    updateRemoveButtonVisibility();
+    return clone;
+  }
+
+  function updateRemoveButtonVisibility() {
+    const currentStreamBlocks = document.querySelectorAll('#stream-wrapper .stream-block:not(#stream-block-template)');
+    currentStreamBlocks.forEach(block => {
+      const btn = block.querySelector('.removeStreamBtn');
+      if (btn) btn.style.display = 'inline-block';
+    });
+  }
+
+  const PERIODIC_RELOAD_INTERVAL_MS = 5 * 60 * 1000;
+  function periodicPageReload() {
+    console.log(`Waktunya reload periodik (setiap ${PERIODIC_RELOAD_INTERVAL_MS / 1000 / 60} menit). Me-reload halaman...`);
+    window.location.reload(true);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    if (!streamBlockTemplate || !streamWrapper || !addStreamBtn) {
+      console.error("Elemen penting halaman (template, wrapper, atau tombol tambah) tidak ditemukan!");
+      return;
+    }
+
+    addStreamBtn.addEventListener('click', function() {
+      createAndSetupStreamBlock();
+      saveStreamsState();
+    });
+
+    const savedStates = JSON.parse(localStorage.getItem(PERSISTED_STREAMS_KEY));
+
+    if (savedStates && Array.isArray(savedStates) && savedStates.length > 0) {
+      savedStates.forEach(camId => {
+        const newBlock = createAndSetupStreamBlock(camId);
+        // Tidak auto start stream, user harus klik Start
+      });
+    } else {
+      createAndSetupStreamBlock();
+      saveStreamsState();
+    }
+
+    updateRemoveButtonVisibility();
+    // setInterval(periodicPageReload, PERIODIC_RELOAD_INTERVAL_MS);
+  });
+
+  // --- SSE untuk notifikasi pelanggaran ---
+  function initializeTrackingNotifications() {
+    const eventSourceUrl = "{{ url_for('admin.tracking_events') }}";
+    const eventSource = new EventSource(eventSourceUrl);
+
+    eventSource.onmessage = function(event) {
+      if (event.data.startsWith(": keepalive")) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data && data.message) {
+          let title = "Info Pelanggaran";
+          if (data.type === 'success') title = "Pelanggaran Terdeteksi";
+          else if (data.type === 'warning') title = "Peringatan Pelanggaran";
+          else if (data.type === 'error') title = "Error Pelanggaran";
+          Swal.fire({
+            title: title,
+            html: data.message,
+            icon: data.type || 'info',
+            toast: true,
+            position: 'center',
+            showConfirmButton: false,
+            timer: 3500,
+            timerProgressBar: true,
+          });
+        }
+      } catch (e) {
+        console.error("SSE: Error parsing tracking event:", e, event.data);
+      }
+    };
+
+    eventSource.onerror = function(err) {
+      console.error("SSE: Error koneksi event stream tracking:", err);
+    };
+
+    window.addEventListener('beforeunload', function() {
+      if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+        eventSource.close();
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // ...existing code...
+    initializeTrackingNotifications();
+  });
+</script>
+
+{% endblock %}

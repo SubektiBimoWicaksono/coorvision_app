@@ -1,0 +1,31 @@
+Timestamp,Camera,Personnel ID,Personnel Name,Violation Type,Confidence,Image Path
+2025-07-04 11:32:50,Kamera Aula 2,1,subekti,no-tie,0.87,static/detection_tracking/0f7c7fbff16f4549baf1e7ac187b5d04.jpg
+2025-07-04 13:14:02,Kamera Aula 2,7,surya,no-tie,0.86,static/detection_tracking/7d9ed3d08290413da73d211311dadc65.jpg
+2025-07-04 13:14:33,Ruang Aula,7,surya,no-tie,0.66,static/detection_tracking/e2e2e21e9a4e4930816a60d13fc1c354.jpg
+2025-07-04 13:19:16,Ruang Aula,2,Rafi,no-tie,0.63,static/detection_tracking/47c31363ccb24977932c683121038a98.jpg
+2025-07-04 13:19:31,Ruang Aula,7,surya,no-tie,0.64,static/detection_tracking/747e37451cdc40cdace05a0277e26ec5.jpg
+2025-07-04 13:19:51,Ruang Aula,5,muhammad abidin,no-tie,0.63,static/detection_tracking/cbe4369a5fbe46f58865f887f3dc3070.jpg
+2025-07-04 13:20:05,Ruang Aula,4,fafa,no-tie,0.72,static/detection_tracking/f5d9d7be51504b7895fc3411ef2ecaaa.jpg
+2025-07-04 13:20:40,Ruang Aula,3,mahesa agung,no-tie,0.76,static/detection_tracking/809657000fef45a49f992280cfcfb151.jpg
+2025-07-04 13:45:06,ruangan kerja,7,surya,no-tie,0.72,static/detection_tracking/e10185ec456c427eac750603c8721371.jpg
+2025-07-04 13:45:17,ruangan kerja,5,muhammad abidin,no-tie,0.81,static/detection_tracking/d6d007dc87f443989362ec25cc4a6dcc.jpg
+2025-07-04 13:45:23,ruangan kerja,2,Rafi,no-tie,0.82,static/detection_tracking/a954d86bbc62410c8cfde608b5291f75.jpg
+2025-07-04 13:48:34,ruangan kerja,3,mahesa agung,no-tie,0.65,static/detection_tracking/5e4e245484184880948d75a417bbb79c.jpg
+2025-07-04 13:48:43,ruangan kerja,7,surya,no-tie,0.66,static/detection_tracking/5ad254a5063648d9a43d7ff6a1711b1f.jpg
+2025-07-04 13:49:36,ruangan kerja,2,Rafi,no-tie,0.65,static/detection_tracking/71cf5789e87a4151a9b4ee0a81e59a44.jpg
+2025-07-04 13:53:11,Kamera Aula 2,5,muhammad abidin,no-tie,0.75,static/detection_tracking/c6f3bbfe1c3f405b9d15cd4bd49fb467.jpg
+2025-07-04 13:53:13,Kamera Aula 2,7,surya,no-tie,0.76,static/detection_tracking/9d14935dabdd4fac8f351c6ada40840e.jpg
+2025-07-04 13:56:27,Kamera Aula 2,5,muhammad abidin,no-tie,0.84,static/detection_tracking/853bd5c6e0434e65b00cf3afddbbfb05.jpg
+2025-07-04 13:56:56,Kamera Aula 2,2,Rafi,no-tie,0.73,static/detection_tracking/e950e6ac9f354ecc8147a856541d3840.jpg
+2025-07-04 13:57:24,Kamera Aula 2,7,surya,no-tie,0.68,static/detection_tracking/bc1f556def8948bbb154ad46a6b03121.jpg
+2025-07-04 13:57:29,Kamera Aula 2,3,mahesa agung,no-tie,0.78,static/detection_tracking/3c2da7091aa84597a525aa7edcbf3c8e.jpg
+2025-07-04 14:06:10,Kamera Aula 2,7,surya,no-tie,0.86,static/detection_tracking/097cada524754feb90bd4f477a423ff0.jpg
+2025-07-04 14:09:41,ruangan kerja,2,Rafi,no-tie,0.64,static/detection_tracking/8941061017ab4868ac3fe973a7d01e38.jpg
+2025-07-04 14:11:19,ruangan kerja,3,mahesa agung,no-tie,0.62,static/detection_tracking/20ef1e7b21594947816fa30017992989.jpg
+2025-07-04 14:28:19,Kamera Aula 2,1,subekti,no-tie,0.73,static/detection_tracking/b197166eeab4490f83831fc914fbfc4a.jpg
+2025-07-04 14:29:15,ruangan kerja,4,fafa,no-tie,0.62,static/detection_tracking/3ad9a3be53f948a69f80cb3625d84c1b.jpg
+2025-07-04 14:29:18,ruangan kerja,1,subekti,no-tie,0.60,static/detection_tracking/07f1b36cb85843829890a9290d4f539d.jpg
+2025-07-04 14:38:15,Kamera Aula 2,2,Rafi,no-tie,0.83,static/detection_tracking/5cf2d9b0721044d7abd0d0e230a05de2.jpg
+2025-07-04 14:38:35,Kamera Aula 2,3,mahesa agung,no-tie,0.77,static/detection_tracking/525680da5535493cbe4d646dcfbff086.jpg
+2025-07-04 14:39:09,Kamera Aula 2,7,surya,no-tie,0.83,static/detection_tracking/c22d75da99674dc1b8685885f7492080.jpg
+2025-07-04 14:49:23,Kamera Aula 2,1,subekti,no-tie,0.87,static/detection_tracking/e0b80732cd094ecc831f7118b6954a9a.jpg

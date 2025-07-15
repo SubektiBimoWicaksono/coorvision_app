@@ -1,0 +1,7 @@
+Timestamp,Camera,Personnel ID,Personnel Name,Violation Type,Confidence,Image Path
+2025-06-27 14:12:59,Ruang Aula,1,subekti,no-lanyard-idcard,0.84,static/detection_tracking/f23018162d9f4e45b836d77b4bf586ba.jpg
+2025-06-27 14:20:46,Ruang Aula,2,Rafi,no-lanyard-idcard,0.85,static/detection_tracking/f0628e4dac0142f5bba9142f4a026cf5.jpg
+2025-06-27 14:53:18,Ruang Aula,1,subekti,no-lanyard-idcard,0.89,static/detection_tracking/75910b4f0a2243cea02054ded91c6a1e.jpg
+2025-06-27 14:54:40,Ruang Aula,1,subekti,no-lanyard-idcard,0.74,static/detection_tracking/4978a8a978584f6485a07c10c1d65064.jpg
+2025-06-27 15:00:04,Ruang Aula,2,Rafi,no-tie,0.73,static/detection_tracking/585ba31737a04729b6b66eccb372df7e.jpg
+2025-06-27 15:00:16,Ruang Aula,1,subekti,no-tie,0.82,static/detection_tracking/910bf184030b4db4acea8d3ae596593b.jpg

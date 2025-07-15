@@ -1,0 +1,246 @@
+{% extends "components/base.html" %}
+{% block title %}
+Company List
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <div class="page-header d-print-none">
+        <div class="container-xl">
+            <div class="row g-2 align-items-center">
+                <div class="col">
+                    <div class="page-pretitle">Companies</div>
+                    <h2 class="page-title">Master Company Admin</h2>
+                </div>
+                <div class="col-auto ms-auto d-print-none">
+                    <div class="btn-list">
+                        <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-tambah">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            Add Company
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="page-body">
+        <div class="container-xl">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Company List</h3>
+                    <div class="ms-auto text-muted">
+                        <form method="get" class="d-flex align-items-center gap-3" action="{{ url_for('superadmin.company') }}">
+                            <div>
+                                <input type="text" name="search" class="form-control form-control-sm" placeholder="Search company..." value="{{ search_term }}">
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Search</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table card-table table-vcenter text-nowrap">
+                        <thead>
+                            <tr>
+                                <th class="w-1">No.</th>
+                                <th>Company</th>
+                                <th>Admin Username</th>
+                                <th class="w-1"></th> {# Kolom kosong untuk tombol aksi #}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if companies %}
+                                {% for company in companies %}
+                                <tr>
+                                    <td><span class="text-muted">{{ loop.index + (page - 1) * entries_per_page }}</span></td>
+                                    <td>
+                                        <div class="d-flex py-1 align-items-center">
+                                            <span class="avatar me-3">{{ company.name[0]|upper }}</span>
+                                            <div class="flex-fill">
+                                                <div class="font-weight-medium">{{ company.name }}</div>
+                                                <div class="text-muted">{{ company.user_account.email if company.user_account else 'N/A' }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {{ company.user_account.username if company.user_account else 'N/A' }}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="dropdown">
+                                            <button class="btn btn-ghost-secondary btn-icon" data-bs-toggle="dropdown" data-bs-strategy="fixed">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-dots-vertical" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><circle cx="12" cy="12" r="1" /><circle cx="12" cy="19" r="1" /><circle cx="12" cy="5" r="1" /></svg>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <a class="dropdown-item" href="#" onclick="showEditModal({{ company.id }})">Edit</a>
+                                                <a class="dropdown-item text-danger" href="#" onclick="deleteCompany({{ company.id }})">Delete</a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No companies found.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if companies %}
+                <div class="card-footer d-flex align-items-center">
+                    <p class="m-0 text-muted">Showing <span>{{ (page - 1) * entries_per_page + 1 }}</span> to <span>{{ (page - 1) * entries_per_page + companies|length }}</span> of <span>{{ company_count }}</span> entries</p>
+                    <ul class="pagination m-0 ms-auto">
+                        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('superadmin.company', page=page - 1, entries=entries_per_page, search=search_term) }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><polyline points="15 6 9 12 15 18" /></svg>
+                                prev
+                            </a>
+                        </li>
+                        {% for i in range(1, total_pages + 1) %}
+                        <li class="page-item {% if page == i %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('superadmin.company', page=i, entries=entries_per_page, search=search_term) }}">{{ i }}</a>
+                        </li>
+                        {% endfor %}
+                        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('superadmin.company', page=page + 1, entries=entries_per_page, search=search_term) }}">
+                                next <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><polyline points="9 6 15 12 9 18" /></svg>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal modal-blur fade" id="modal-tambah" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label">Company Name</label><input type="text" class="form-control" id="add-company-name"></div>
+                <div class="mb-3"><label class="form-label">Username</label><input type="text" class="form-control" id="add-username"></div>
+                <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" id="add-email"></div>
+                <div class="mb-3"><label class="form-label">Password</label><input type="password" class="form-control" id="add-password"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="addCompany()">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal modal-blur fade" id="modal-edit" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Company</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-company-id">
+                <div class="mb-3"><label class="form-label">Company Name</label><input type="text" class="form-control" id="edit-company-name"></div>
+                <div class="mb-3"><label class="form-label">Username</label><input type="text" class="form-control" id="edit-username"></div>
+                <div class="mb-3"><label class="form-label">Email</label><input type="email" class="form-control" id="edit-email"></div>
+                <div class="mb-3"><label class="form-label">Password</label><input type="password" class="form-control" id="edit-password" placeholder="Leave blank to keep current password"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="editCompany()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Your existing JavaScript for addCompany, showEditModal, editCompany, deleteCompany remains unchanged.
+    const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    function addCompany() {
+        const payload = {
+            company_name: document.getElementById('add-company-name').value,
+            username: document.getElementById('add-username').value,
+            email: document.getElementById('add-email').value,
+            password: document.getElementById('add-password').value,
+        };
+        fetch("{{ url_for('superadmin.add_company') }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken()},
+            body: JSON.stringify(payload)
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                Swal.fire('Success!', data.message, 'success').then(() => location.reload());
+            } else {
+                Swal.fire('Error!', data.message, 'error');
+            }
+        }).catch(err => Swal.fire('Error!', 'An unexpected error occurred.', 'error'));
+    }
+
+    function showEditModal(companyId) {
+        fetch(`{{ url_for('superadmin.get_company', company_id=0) }}`.replace('0', companyId))
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('edit-company-id').value = data.id;
+            document.getElementById('edit-company-name').value = data.company_name;
+            document.getElementById('edit-username').value = data.username;
+            document.getElementById('edit-email').value = data.email;
+            new bootstrap.Modal(document.getElementById('modal-edit')).show();
+        }).catch(err => Swal.fire('Error!', 'Failed to load company data.', 'error'));
+    }
+
+    function editCompany() {
+        const companyId = document.getElementById('edit-company-id').value;
+        const payload = {
+            company_name: document.getElementById('edit-company-name').value,
+            username: document.getElementById('edit-username').value,
+            email: document.getElementById('edit-email').value,
+            password: document.getElementById('edit-password').value,
+        };
+        fetch(`{{ url_for('superadmin.edit_company', company_id=0) }}`.replace('0', companyId), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken()},
+            body: JSON.stringify(payload)
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                Swal.fire('Success!', data.message, 'success').then(() => location.reload());
+            } else {
+                Swal.fire('Error!', data.message, 'error');
+            }
+        }).catch(err => Swal.fire('Error!', 'An unexpected error occurred.', 'error'));
+    }
+
+    function deleteCompany(companyId) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`{{ url_for('superadmin.delete_company', company_id=0) }}`.replace('0', companyId), {
+                    method: 'POST',
+                    headers: {'X-CSRFToken': getCsrfToken()}
+                }).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        Swal.fire('Deleted!', 'The company has been deleted.', 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Error!', data.message, 'error');
+                    }
+                }).catch(err => Swal.fire('Error!', 'An unexpected error occurred.', 'error'));
+            }
+        });
+    }
+</script>
+{% endblock %}

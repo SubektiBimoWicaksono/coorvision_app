@@ -1,0 +1,111 @@
+{% extends "components/base.html" %}
+{% block title %}
+Dashboard Superadmin
+{% endblock %}
+
+{% block content %} 
+<div class="content">
+    <div class="container-xl">
+        <div class="header mb-4">
+            <div class="row align-items-center justify-content-between gx-4">
+                <div class="col-auto">
+                    <div class="page-pretitle">Overview</div>
+                    <h2 class="page-title">Dashboard</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row row-deck row-cards">
+            <div class="col-sm-6 col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="subheader">Number of Companies</div>
+                        </div>
+                        <div class="h1 mb-1 mt-3">{{ total_companies }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="subheader">Number of Accounts</div>
+                        </div>
+                        <div class="h1 mb-1 mt-3">{{ total_accounts }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="subheader">Number of Employees</div>
+                        </div>
+                        <div class="h1 mb-1 mt-3">{{ total_employees }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row row-deck row-cards mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Growth Over Last 30 Days</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="growth-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+<script>
+// Pastikan library ApexCharts sudah di-load dari base.html atau di sini
+document.addEventListener("DOMContentLoaded", function () {
+    // Ambil elemen target untuk chart
+    const chartElement = document.querySelector("#growth-chart");
+
+    // Jika elemen tidak ditemukan, hentikan eksekusi dan beri pesan error di console
+    if (!chartElement) {
+        console.error("Elemen #growth-chart TIDAK DITEMUKAN. Chart tidak bisa dibuat.");
+        return;
+    }
+
+    // Ambil data chart yang sudah disiapkan oleh backend
+    const chartData = {{ chart_data|tojson|safe }};
+    
+    // Periksa apakah data yang diterima valid
+    if (!chartData || !chartData.labels || !chartData.company_series) {
+        console.error("Data chart tidak valid atau kosong. Periksa output dari backend Python Anda.");
+        chartElement.innerHTML = '<div class="text-center text-danger">Gagal memuat data chart. Silakan periksa konsol.</div>';
+        return;
+    }
+
+    // Opsi konfigurasi untuk ApexCharts
+    const options = {
+        chart: { type: 'line', height: 350, zoom: { enabled: false }, toolbar: { show: true } },
+        series: [
+            { name: 'Companies', data: chartData.company_series },
+            { name: 'Users', data: chartData.user_series },
+            { name: 'Employees', data: chartData.employee_series }
+        ],
+        xaxis: { categories: chartData.labels, tickAmount: 10, labels: { rotate: -45, hideOverlappingLabels: true } },
+        yaxis: { title: { text: 'Total Kumulatif' } },
+        stroke: { curve: 'smooth', width: 2.5 },
+        legend: { position: 'top', horizontalAlign: 'right' },
+        tooltip: { x: { format: 'dd MMM yyyy' } },
+        title: { text: 'Cumulative Growth (Last 30 Days)', align: 'left' }
+    };
+
+    // Buat instance chart baru dan render ke dalam div #growth-chart
+    const chart = new ApexCharts(chartElement, options);
+    chart.render();
+});
+</script>
+{% endblock %}

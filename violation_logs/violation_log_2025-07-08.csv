@@ -1,0 +1,7 @@
+Timestamp,Camera,Personnel ID,Personnel Name,Violation Type,Confidence,Image Path
+2025-07-08 03:35:32,Kamera Aula 2,1,subekti,no-tie,0.84,static/detection_tracking/51ed5dbdb8294334b751139399b568e0.jpg
+2025-07-08 03:35:42,Kamera Aula 2,4,fafa,no-tie,0.85,static/detection_tracking/21e30b628ead4d6b902de49eeb6b2152.jpg
+2025-07-08 03:44:42,Kamera Aula 2,3,mahesa agung,no-tie,0.75,static/detection_tracking/b8d7e1ea6fec4897b6934623fabed379.jpg
+2025-07-08 04:57:42,Kamera Luar,7,surya,no-tie,0.79,static/detection_tracking/7f32aac147dc49f6a9ecaa996551a695.jpg
+2025-07-08 12:14:20,ruangan kerja,3,mahesa agung,no-tie,0.63,static/detection_tracking/9725937896ba4a419430e8473ea10b41.jpg
+2025-07-08 15:08:36,ruangan kerja,3,mahesa agung,no-tie,0.77,static/detection_tracking/6c6c46154bc8438cabeae74ce97e9707.jpg

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Env & IDE
+.env
+.venv/
+venv/
+.venv_coorporate_app/
+.venv_coorporate_app/
+/venv_coorporate_app/
+./venv_coorporate_app/
+/app/static/img/extracted_faces/
+./app/static/img/extracted_faces/
+./app/static/img/personnel_pics/
+/app/static/img/personnel_pics/
+
+*.egg-info/
+instance/
+media/
+
+
+# VSCode
+.vscode/
+
+# Jupyter & logs
+.ipynb_checkpoints/
+*.log

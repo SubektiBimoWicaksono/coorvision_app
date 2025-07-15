@@ -1,0 +1,13 @@
+Timestamp,Camera,Personnel ID,Personnel Name,Violation Type,Confidence,Image Path
+2025-06-30 06:54:27,Kamera Aula 2,1,subekti,no-tie,0.72,static/detection_tracking/bbf7abab001a4e41b7c00ff8f41da4d4.jpg
+2025-06-30 07:26:10,Kamera Aula 2,1,subekti,no-tie,0.74,static/detection_tracking/a49616baf0094de9821acdae0d4ac0ef.jpg
+2025-06-30 08:38:44,Kamera Aula 2,1,subekti,no-tie,0.70,static/detection_tracking/3955c64e28b44c648c47f7e308bd5664.jpg
+2025-06-30 12:17:35,Kamera Aula 2,1,subekti,no-tie,0.61,static/detection_tracking/d39aed2c73fa408bae7e004036d5407b.jpg
+2025-06-30 12:17:41,Kamera Aula 2,2,Rafi,no-tie,0.74,static/detection_tracking/3e027a6b555c4976af28a073394d2d11.jpg
+2025-06-30 12:31:34,Kamera Aula 2,1,subekti,no-tie,0.66,static/detection_tracking/47d85ae49655467a8bfc0e8da9e2fa8c.jpg
+2025-06-30 12:32:02,Kamera Aula 2,2,Rafi,no-tie,0.61,static/detection_tracking/0b0e53577bc94df08ec6e2491f035652.jpg
+2025-06-30 12:34:03,Ruang Aula,1,subekti,no-tie,0.69,static/detection_tracking/61d9988446c042c2a1ed6213ba1d0a5f.jpg
+2025-06-30 12:34:36,Ruang Aula,2,Rafi,no-tie,0.71,static/detection_tracking/d5eb199b6928423fa49db2505430c3e1.jpg
+2025-06-30 17:09:05,Ruang Aula,4,fafa,no-tie,0.62,static/detection_tracking/3f3c9b76f30d43aa9e1cdf651a87017f.jpg
+2025-06-30 17:28:36,kamera dalam,3,mahesa agung,no-tie,0.60,static/detection_tracking/faf507809f6646e4be5b86cf58b882e5.jpg
+2025-06-30 17:38:52,Ruang Aula,5,muhammad abidin,no-tie,0.62,static/detection_tracking/6350b070a75b45cd80fa58ac75beb03c.jpg

@@ -1,0 +1,388 @@
+{% extends 'components/base.html' %} {# Pastikan path ini benar #}
+{% block title %}Presence Stream{% endblock %}
+
+{% block content %}
+{# {% csrf_token %} #} {# Biasanya tidak diletakkan di sini untuk Flask, penanganan CSRF berbeda #}
+<div class="content">
+  <div class="container-xl">
+        <div class="header mb-4">
+            <div class="row align-items-center justify-content-between gx-4">
+        <div class="col-auto">
+          <div class="page-pretitle">{{ company.name }}'s</div> {# Asumsi 'company' ada di context template #}
+          <h2 class="page-title">Presence Stream</h2>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-7"> {# Lebarkan kolom video #}
+            <div class="mb-3">
+              <label for="cameraSelect" class="form-label">Pilih Kamera:</label>
+              <select id="cameraSelect" class="form-select">
+                <option value="">-- Silakan Pilih Kamera --</option>
+                {# Loop ini akan diisi oleh data kamera dari context Flask Anda #}
+                {# Contoh: all_presence_cameras = [{'id': 1, 'name': 'Kamera Depan'}, {'id': 2, 'name': 'Kamera Belakang'}] #}
+                {% if all_presence_cameras %} {# Variabel dari context Flask #}
+                  {% for cam in all_presence_cameras %}
+                    <option value="{{ cam.id }}" {% if cam.id == default_selected_camera_id %}selected{% endif %}>
+                      {{ cam.cam_name }} (ID: {{ cam.id }} - {{ cam.feed_src }})
+                    </option>
+                  {% endfor %}
+                {% else %}
+                  <option value="" disabled>Tidak ada kamera tersedia</option>
+                {% endif %}
+              </select>
+            </div>
+
+            <div id="stream-container" class="text-center position-relative bg-dark rounded" style="min-height: 300px; display: flex; align-items: center; justify-content: center;">
+              <div id="loader" class="spinner-border text-light" role="status" style="display: none;">
+                <span class="visually-hidden">Memuat Stream...</span>
+              </div>
+              {# --- PERUBAHAN DI SINI --- #}
+              {# Menggunakan url_for() Flask. 'bp' adalah nama Blueprint Anda. #}
+             <img id="img_stream"
+                  data-stream-url-template="{{ url_for('face.live_presence_feed', cam_id=0) | replace('0', 'CAM_ID') }}"
+                  style="width: 100%; max-height: 60vh; object-fit: contain; border-radius: 0.25rem; display: none;"
+                  alt="Live Stream Kamera"/>
+
+              <div id="stream-alert-box" class="p-3 text-white"></div>
+            </div>
+              <div id="alert-box" class="mt-2"></div>
+          </div>
+
+          <div class="col-md-5"> {# Sempitkan kolom tabel #}
+            <h4 class="mb-3">Absen Hari Ini - <span id="today-date">Memuat tanggal...</span></h4>
+            <div class="table-responsive" style="max-height: calc(60vh + 70px);">
+                <table class="table table-sm table-bordered table-striped" id="presence-table">
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>Status</th>
+                    <th>Waktu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="3" class="text-center text-muted">Memuat data absensi...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+
+  // Fungsi ini harus ada di kedua file HTML di dalam tag <script> utama
+  let reloadCheckTimeoutId = null;
+  const CHECK_SERVER_DELAY_MS = 10000; // Tunggu 10 detik sebelum memeriksa server
+
+  function checkServerAndReloadPage(delayMs = CHECK_SERVER_DELAY_MS) {
+    clearTimeout(reloadCheckTimeoutId); // Hindari beberapa pengecekan yang tertunda
+    console.log(`Stream gagal total, server mungkin restart. Akan dicek dalam ${delayMs / 1000} detik untuk reload halaman.`);
+
+    reloadCheckTimeoutId = setTimeout(() => {
+      // Gunakan URL root atau endpoint ping yang spesifik
+      const pingUrl = "{{ url_for('stream.ping_server') }}"; // Menggunakan url_for dari Flask
+
+      fetch(pingUrl)
+        .then(response => {
+          if (response.ok) {
+            console.log('Server terdeteksi aktif kembali. Me-reload halaman...');
+            window.location.reload();
+          } else {
+            console.log('Pengecekan server mengembalikan status error. Belum me-reload. Status:', response.status);
+            // Bisa dijadwalkan pengecekan ulang di sini jika diperlukan
+            // checkServerAndReloadPage(delayMs + 5000); // Coba lagi dengan delay lebih lama
+          }
+        })
+        .catch(error => {
+          console.log('Pengecekan server gagal (kemungkinan error jaringan atau server masih down). Belum me-reload. Error:', error);
+          // Bisa dijadwalkan pengecekan ulang di sini
+          // checkServerAndReloadPage(delayMs + 5000); // Coba lagi dengan delay lebih lama
+        });
+    }, delayMs);
+  }
+
+
+
+  // Variabel dan logika stream Anda
+  let currentSelectedCameraId = null;
+  const imgStream = document.getElementById('img_stream');
+  const loader = document.getElementById('loader');
+  const streamAlertBox = document.getElementById('stream-alert-box');
+  const cameraSelect = document.getElementById('cameraSelect');
+  // Pastikan imgStream didefinisikan sebelum streamUrlTemplate diakses
+  const streamUrlTemplate = imgStream ? imgStream.dataset.streamUrlTemplate : null;
+
+
+  let retryTimeoutId = null; 
+  let currentRetryCount = 0;
+  const MAX_STREAM_RETRIES = 3; // Kurangi untuk tes lebih cepat jika perlu
+  const STREAM_RETRY_DELAY_MS = 3000; 
+  const PREFERRED_CAMERA_ID_KEY = 'preferredCameraId_presenceStream'; 
+
+  if (imgStream) { // Hanya tambahkan event listener jika imgStream ada
+      imgStream.onload = () => {
+        clearTimeout(retryTimeoutId); 
+        currentRetryCount = 0; 
+        loader.style.display = 'none';
+        imgStream.style.display = 'block';
+        streamAlertBox.innerHTML = ''; 
+        console.log("Stream berhasil dimuat untuk kamera ID:", currentSelectedCameraId);
+      };
+
+      imgStream.onerror = () => {
+        clearTimeout(retryTimeoutId);
+        loader.style.display = 'none';
+        imgStream.style.display = 'none';
+        // Hapus src agar tidak menampilkan ikon gambar rusak permanen
+        imgStream.src = ""; 
+
+        if (currentSelectedCameraId) { // Hanya retry jika ada kamera yang dipilih
+          currentRetryCount++; // Pindahkan increment ke sini agar logikanya lebih jelas
+          if (currentRetryCount <= MAX_STREAM_RETRIES) { // Bandingkan dengan <=
+            const message = `<div class="alert alert-warning">Stream terputus. Mencoba lagi ke ID ${currentSelectedCameraId}... (${currentRetryCount}/${MAX_STREAM_RETRIES})</div>`;
+            streamAlertBox.innerHTML = message;
+            console.warn(`Error memuat stream (Presence) untuk ID ${currentSelectedCameraId}. Mencoba lagi... (Percobaan ${currentRetryCount})`);
+            
+            retryTimeoutId = setTimeout(() => {
+              if (cameraSelect && cameraSelect.value === currentSelectedCameraId) { // Pastikan kamera tidak diganti & elemen ada
+                updateVideoStream(currentSelectedCameraId, true); // Tandai sebagai retry
+              } else {
+                console.log("Pilihan kamera diubah atau elemen tidak ada. Membatalkan retry.");
+                currentRetryCount = 0; 
+              }
+            }, STREAM_RETRY_DELAY_MS);
+          } else { 
+            const errorMessage = `<div class="alert alert-danger">Gagal memuat stream ID ${currentSelectedCameraId} setelah ${MAX_STREAM_RETRIES} percobaan. Server mungkin tidak aktif.</div>`;
+            streamAlertBox.innerHTML = errorMessage;
+            console.error(`Gagal memuat stream (Presence) untuk ID ${currentSelectedCameraId} setelah ${MAX_STREAM_RETRIES} percobaan.`);
+            checkServerAndReloadPage(); 
+          }
+        } else {
+            console.log("Stream error, tapi tidak ada kamera yang dipilih untuk di-retry.");
+        }
+      };
+  } else {
+      console.error("Element 'img_stream' tidak ditemukan!");
+  }
+
+  function updateVideoStream(camId, isRetry = false) {
+    if (!imgStream || !cameraSelect || !loader || !streamAlertBox) {
+        console.error("Satu atau lebih elemen UI stream tidak ditemukan. Tidak bisa update video stream.");
+        return;
+    }
+    
+    if (!isRetry) {
+      clearTimeout(retryTimeoutId);
+      currentRetryCount = 0;
+    }
+
+    streamAlertBox.innerHTML = '';
+
+    if (!camId || camId === "") {
+      imgStream.style.display = 'none';
+      imgStream.src = "";
+      loader.style.display = 'none';
+      if (cameraSelect.options.length > 1 && cameraSelect.options[0].value === "") {
+          streamAlertBox.innerHTML = '<div class="text-muted">Silakan pilih kamera untuk memulai stream.</div>';
+      } else if (cameraSelect.options.length === 0 || (cameraSelect.options.length === 1 && cameraSelect.options[0].disabled)) {
+          streamAlertBox.innerHTML = '<div class="text-warning">Tidak ada kamera tersedia.</div>';
+      }
+      currentSelectedCameraId = null;
+      return;
+    }
+
+    if (!streamUrlTemplate || streamUrlTemplate === "#" || !streamUrlTemplate.includes("CAM_ID")) {
+        imgStream.style.display = 'none';
+        loader.style.display = 'none';
+        streamAlertBox.innerHTML = '<div class="text-danger">Konfigurasi URL stream bermasalah. Template URL tidak valid.</div>';
+        console.error("Stream URL template tidak valid atau tidak mengandung CAM_ID:", streamUrlTemplate);
+        currentSelectedCameraId = null;
+        return;
+    }
+
+    currentSelectedCameraId = camId;
+    imgStream.style.display = 'none';
+    loader.style.display = 'block';
+
+    let newStreamUrl = streamUrlTemplate.replace('CAM_ID', currentSelectedCameraId);
+    newStreamUrl += (newStreamUrl.includes('?') ? '&' : '?') + `t=${new Date().getTime()}`;
+
+    // console.log(`Attempting to load stream (Presence): ${newStreamUrl} (IsRetry: ${isRetry}, Count: ${currentRetryCount})`);
+    imgStream.src = newStreamUrl;
+  }
+
+    function showSwalNotification(message, iconType = 'info', titleText = 'Informasi') {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: titleText,
+                html: message, // Gunakan html agar bisa format pesan jika perlu
+                icon: iconType,
+                toast: true,
+                position: 'center',
+                showConfirmButton: false,
+                timer: 3000, // Tampilkan selama 5 detik
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            });
+        } else {
+            console.warn("SweetAlert2 (Swal) tidak terdefinisi. Notifikasi:", message);
+            alert(message); // Fallback
+        }
+    }
+
+    // --- Logika Server-Sent Events (SSE) untuk Notifikasi Absensi ---
+    function initializePresenceNotifications() {
+        console.log("SSE: Memulai koneksi ke event stream absensi...");
+        // Pastikan nama blueprint 'face' sudah benar
+        const eventSourceUrl = "{{ url_for('face.presence_events') }}";
+        const eventSource = new EventSource(eventSourceUrl);
+
+        eventSource.onmessage = function(event) {
+            console.log("SSE: Menerima data:", event.data);
+            if (event.data.startsWith(": keepalive")) { // Abaikan komentar keep-alive
+                return;
+            }
+            try {
+                const data = JSON.parse(event.data);
+                if (data && data.message) {
+                    // Tentukan judul notifikasi berdasarkan tipe
+                    let title = "Info Absensi";
+                    if (data.type === 'success') title = "Absensi Berhasil";
+                    else if (data.type === 'warning') title = "Perhatian Absensi";
+                    else if (data.type === 'error') title = "Error Absensi";
+                    
+                    showSwalNotification(data.message, data.type || 'info', title);
+                    
+                    // Perbarui tabel absensi setelah notifikasi diterima
+                    // Beri sedikit jeda agar DB sempat update jika notifikasi terlalu cepat
+                    setTimeout(loadPresenceTable, 500); 
+                }
+            } catch (e) {
+                console.error("SSE: Error parsing data JSON:", e, "Data diterima:", event.data);
+            }
+        };
+
+        eventSource.onerror = function(err) {
+            console.error("SSE: Error koneksi event stream:", err);
+            // EventSource akan otomatis mencoba reconnect.
+            // Anda bisa menambahkan logika untuk menutup setelah beberapa kali gagal.
+            // eventSource.close(); // Jika ingin menghentikan retry
+        };
+
+        // Pastikan eventSource ditutup saat halaman unload untuk menghindari koneksi zombie
+        window.addEventListener('beforeunload', function() {
+            if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+                console.log("SSE: Menutup koneksi event stream karena halaman unload.");
+                eventSource.close();
+            }
+        });
+    }
+
+  function loadPresenceTable() {
+    const tableDataUrl = "{{ url_for('stream.get_today_presences') }}";
+
+    fetch(tableDataUrl)
+      .then(res => {
+          if (!res.ok) { throw new Error(`Gagal mengambil data absensi: ${res.status}`);}
+          return res.json();
+      })
+      .then(response => {
+        const data = response.data;
+        const tbody = document.querySelector('#presence-table tbody');
+        tbody.innerHTML = '';
+
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach(row => {
+            const tr = document.createElement('tr');
+            let badgeClass = 'bg-secondary';
+            if (row.status) {
+                const statusLower = row.status.toLowerCase();
+                if (statusLower === 'ontime' || statusLower === 'tepat waktu') badgeClass = 'bg-success';
+                else if (statusLower === 'late' || statusLower === 'terlambat') badgeClass = 'bg-warning text-dark';
+                else if (statusLower === 'leave' || statusLower === 'pulang') badgeClass = 'bg-info text-dark';
+            }
+            tr.innerHTML = `
+              <td>${row.name || 'N/A'}</td>
+              <td><span class="badge ${badgeClass}">${row.status || 'N/A'}</span></td>
+              <td>${
+                row.timestamp && row.timestamp !== '-' ? row.timestamp :
+                (row.datetime ? new Date(row.datetime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit'}) : 'N/A')
+              }</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else if (Array.isArray(data) && data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Belum ada data absensi hari ini.</td></tr>';
+        } else {
+          console.error('Data absensi bukan array atau format salah:', response);
+          tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Format data absensi tidak sesuai atau error.</td></tr>';
+        }
+      })
+      .catch(error => {
+        console.error('Error mengambil data absensi:', error);
+        const tbody = document.querySelector('#presence-table tbody');
+        if(tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Gagal memuat data absensi. Coba lagi nanti.</td></tr>';
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const todayDateEl = document.getElementById('today-date');
+    if (todayDateEl) {
+        todayDateEl.textContent = formattedDate;
+    }
+
+    if (cameraSelect && imgStream) { // Pastikan elemen ada
+        const storedCameraId = localStorage.getItem(PREFERRED_CAMERA_ID_KEY);
+        if (storedCameraId) {
+            const optionExists = Array.from(cameraSelect.options).some(opt => opt.value === storedCameraId);
+            if (optionExists) {
+                cameraSelect.value = storedCameraId;
+            } else {
+                localStorage.removeItem(PREFERRED_CAMERA_ID_KEY);
+            }
+        }
+        
+        const initialCamId = cameraSelect.value;
+        if (initialCamId && initialCamId !== "") {
+            updateVideoStream(initialCamId);
+        } else {
+            if (streamAlertBox && cameraSelect.options.length > 1 && cameraSelect.options[0].value === "") {
+                streamAlertBox.innerHTML = '<div class="text-muted">Silakan pilih kamera untuk memulai stream.</div>';
+            } else if (streamAlertBox) {
+                streamAlertBox.innerHTML = '<div class="text-warning">Tidak ada kamera tersedia atau dipilih.</div>';
+            }
+        }
+
+        cameraSelect.addEventListener('change', function() {
+            const selectedId = this.value;
+            if (selectedId && selectedId !== "") {
+                localStorage.setItem(PREFERRED_CAMERA_ID_KEY, selectedId);
+            } else {
+                localStorage.removeItem(PREFERRED_CAMERA_ID_KEY);
+            }
+            updateVideoStream(selectedId);
+        });
+    } else {
+        console.error("Elemen 'cameraSelect' atau 'img_stream' tidak ditemukan saat DOMContentLoaded.");
+    }
+
+    if (typeof loadPresenceTable === 'function') loadPresenceTable();
+   // if (typeof detectPresence === 'function') setInterval(detectPresence, 7000);
+    if (typeof loadPresenceTable === 'function') setInterval(loadPresenceTable, 7000);
+    initializePresenceNotifications()
+  });
+</script>
+{% endblock %}

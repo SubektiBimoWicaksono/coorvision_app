@@ -1,0 +1,183 @@
+{% extends 'components/base.html' %}
+{% block title %}
+Capture Faces
+{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="container-xl mb-5">
+        <div class="header mb-4">
+            <div class="row align-items-center justify-content-between gx-4">
+                <div class="col-auto">
+                    <div class="page-pretitle">
+                        Data
+                    </div>
+                    <h2 class="page-title">
+                        {{ name }}'s Capture Faces
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body d-flex flex-column justify-content-center align-items-center mb-5">
+
+            <div class="alert alert-info" role="alert">
+                <div class="d-flex">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12.01" y2="8" /><polyline points="11 12 12 12 12 16 13 16" /></svg>
+                    </div>
+                    <div>
+                        <h4 class="alert-title">Petunjuk Pengambilan Foto</h4>
+                        <div class="text-muted">
+                            <ol class="m-0">
+                                <li>Pastikan wajah Anda terlihat jelas, dengan <strong>pencahayaan yang cukup</strong> dan <strong>jarak tidak terlalu jauh</strong> dari kamera.</li>
+                                <li>Proses ini terdiri dari <strong>5 sesi</strong> untuk memastikan akurasi data. Ikuti instruksi arah yang muncul di layar:
+                                    <ul class="mt-1">
+                                        <li>Hadap Depan</li>
+                                        <li>Hadap Kiri</li>
+                                        <li>Hadap Kanan</li>
+                                        <li>Hadap Atas (sedikit mendongak)</li>
+                                        <li>Hadap Bawah (sedikit menunduk)</li>
+                                    </ul>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h4 id="direction-label" class="mt-4 text-primary fw-bold text-center">Hadap Depan</h4>
+
+            <div class="video-frame-wrapper shadow-sm rounded-lg" style="width: 100%; max-width: 640px; aspect-ratio: 16 / 9; overflow: hidden; position: relative;">
+                <img id="img_stream_capture" src="{{ url_for('face.capture_video') }}" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;" onload="hideLoading()" onerror="handleStreamError()"/>
+            </div>
+
+            <div id="alert-box-capture" class="mt-3"></div>
+
+            <button class="btn btn-primary mt-3" onclick="startCaptureProcess()">Mulai Ambil Foto</button>
+            <button id="next-step-button" class="btn btn-success mt-2 d-none" onclick="goToNextDirection()">Lanjut ke Arah Berikutnya</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const directions = ['Hadap Depan', 'Hadap Kanan', 'Hadap Kiri', 'Hadap Atas', 'Hadap Bawah'];
+    let currentDirectionIndex = 0;
+
+    function updateDirectionLabel() {
+        const label = document.getElementById('direction-label');
+        if (label) label.innerText = directions[currentDirectionIndex];
+    }
+
+    function startCaptureForCurrentDirection() {
+        console.log('Capture untuk:', directions[currentDirectionIndex]);
+
+        let capturedFaces = 0;
+        const totalFaces = 10;
+        const progressInterval = 60;
+        let progressPercentage = 0;
+
+        Swal.fire({
+            title: `Menangkap wajah: ${directions[currentDirectionIndex]}`,
+            html: `
+                <p class="mb-2">Tetap pada posisi, jangan bergerak...</p>
+                <div id="progress-container" style="width: 100%; height: 20px; background-color: #f3f3f3; border-radius: 5px; overflow: hidden;">
+                    <div id="progress-bar" style="width: 0%; height: 100%; background-color: #4caf50; border-radius: 5px; transition: width 0.1s linear;"></div>
+                </div>
+            `,
+            allowEscapeKey: false,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+                fetch("{{ url_for('face.capture_faces_route') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const progressBar = document.getElementById('progress-bar');
+                        const interval = setInterval(() => {
+                            if (capturedFaces < totalFaces) {
+                                capturedFaces++;
+                                progressPercentage = (capturedFaces / totalFaces) * 100;
+                                if(progressBar) progressBar.style.width = progressPercentage + '%';
+                            } else {
+                                clearInterval(interval);
+                                Swal.close();
+                                Swal.fire({
+                                    title: 'Berhasil!',
+                                    text: `Sesi ${directions[currentDirectionIndex]} selesai.`,
+                                    icon: 'success',
+                                    confirmButtonText: 'Lanjut'
+                                }).then(() => {
+                                    goToNextDirection();
+                                });
+                            }
+                        }, progressInterval);
+                    } else {
+                        Swal.fire({
+                            title: 'Gagal!', text: data.message, icon: 'error', confirmButtonText: 'Coba Lagi'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        title: 'Kesalahan!', text: 'Terjadi masalah saat proses capture.', icon: 'error', confirmButtonText: 'OK'
+                    });
+                });
+            }
+        });
+    }
+
+    function startCaptureProcess() {
+        updateDirectionLabel();
+        document.getElementById('next-step-button').classList.add('d-none');
+        startCaptureForCurrentDirection();
+    }
+
+    function goToNextDirection() {
+        currentDirectionIndex++;
+        if (currentDirectionIndex >= directions.length) {
+            Swal.fire({
+                title: 'Selesai!',
+                text: 'Semua sesi pengambilan foto telah berhasil diselesaikan.',
+                icon: 'success'
+            }).then(() => {
+                window.location.href = "{{ url_for('stream.dataset_no_id') }}";
+            });
+        } else {
+            updateDirectionLabel();
+            document.getElementById('next-step-button').classList.add('d-none');
+            // Menunggu sejenak agar pengguna siap sebelum memulai otomatis
+            setTimeout(() => {
+                startCaptureForCurrentDirection();
+            }, 1000); 
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // showLoading() tidak diperlukan di sini lagi karena akan ditangani oleh onload/onerror img
+        updateDirectionLabel();
+    });
+
+    function hideLoading() {
+        // Fungsi ini bisa Anda gunakan untuk menyembunyikan loader jika ada
+        console.log("Stream loaded successfully.");
+    }
+
+    function handleStreamError() {
+        Swal.fire({
+            title: 'Camera Error!',
+            text: 'Webcam tidak dapat dimuat. Pastikan kamera tidak digunakan oleh aplikasi lain dan berikan izin akses.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+        document.getElementById('img_stream_capture').style.display = 'none';
+    }
+</script>
+{% endblock %}

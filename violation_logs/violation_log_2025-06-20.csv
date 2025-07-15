@@ -1,0 +1,4 @@
+Timestamp,Camera,Personnel ID,Personnel Name,Violation Type,Confidence,Image Path
+
+2025-06-20 14:30:15,Ruang Aula,2,Rafi,no-tie,0.73,static/detection_tracking/ed3ab3761e884b24a4ed2381061f767f.jpg
+2025-06-20 14:44:42,Kamera Aula 2,1,subekti,no-tie,0.80,static/detection_tracking/3a491023055745c4813d78eb741de688.jpg

@@ -1,0 +1,192 @@
+{% extends "components/base.html" %}
+{% block title %}Dashboard Admin{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="container-xl">
+        <div class="header mb-4">
+            <div class="row align-items-center justify-content-between gx-4">
+                <div class="col-auto">
+                    <div class="page-pretitle">Overview</div>
+                    <h2 class="page-title">Dashboard</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="row row-deck row-cards mb-4">
+            <div class="col-sm-6">
+                <div class="card card-sm">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <span class="bg-primary text-white avatar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-building-community" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                        <path d="M8 9l5 5v7h-5v-4l-5 4v-7l5 -5z"></path>
+                                        <path d="M17 21v-7l-5 -5l5 -5l5 5v7z"></path>
+                                    </svg>
+                                </span>
+                            </div>
+                            <div class="col">
+                                <div class="font-weight-medium">Total Divisi</div>
+                                <div class="text-muted">{{ division_count }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="card card-sm">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <span class="bg-success text-white avatar">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-users" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                       <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                                       <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path>
+                                       <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"></path>
+                                       <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                       <path d="M21 21v-2a4 4 0 0 0 -3 -3.85"></path>
+                                    </svg>
+                                </span>
+                            </div>
+                            <div class="col">
+                                <div class="font-weight-medium">Total Pegawai</div>
+                                <div class="text-muted">{{ employee_count }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row row-deck row-cards">
+            <div class="col-lg-7 mb-4 mb-lg-0">
+                <div class="card h-100">
+                    <div class="card-header d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+                        <div>
+                            <h3 class="card-title mb-0">Violation Summary</h3>
+                            <div class="text-muted small mt-1">
+                                <span id="today-date-pelanggaran"></span>
+                            </div>
+                        </div>
+                        <form method="get" class="d-flex flex-wrap gap-2 align-items-center mt-3 mt-md-0" id="violation-filter-form">
+                            <div>
+                                <select name="filter_personnel_id" id="filter_personnel_id" class="form-select form-select-sm">
+                                    <option value="">Semua Personel</option>
+                                    {% for p in personnels_list %}
+                                        <option value="{{ p.id }}" {% if filter_personnel_id and filter_personnel_id|int == p.id %}selected{% endif %}>{{ p.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <input type="date" name="filter_date" id="filter_date" value="{{ filter_date_str }}" class="form-control form-control-sm" style="min-width: 130px;">
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-sm btn-primary">Terapkan</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center mb-4">
+                            <div class="col">
+                                <div class="font-weight-medium">Total Pelanggaran</div>
+                                <div class="h1 mt-2 text-danger">{{ pelanggaran_summary.total }}</div>
+                            </div>
+                            <div class="col">
+                                <div class="font-weight-medium">Tidak Memakai Dasi</div>
+                                <div class="h1 mt-2 text-info">{{ pelanggaran_summary.no_tie }}</div>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <canvas id="violationChart" height="150"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="card-title mb-0">Top Pelanggaran</h4>
+                        <form method="get" id="filter-month-form" class="d-flex align-items-center gap-2">
+                            <input type="month" id="filter_month" name="filter_month" class="form-control form-control-sm" value="{{ filter_month }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Go</button>
+                        </form>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table">
+                            <thead>
+                                <tr>
+                                    <th>Pegawai</th>
+                                    <th class="text-center">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in employee_violations %}
+                                <tr>
+                                    <td>{{ emp.name }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-red-lt">{{ emp.violation_count }}</span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="2" class="text-center text-muted">Tidak ada data pelanggaran bulan ini.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tampilkan tanggal filter dalam format lokal
+        const dateStr = "{{ filter_date_str }}";
+        const dateObj = dateStr ? new Date(dateStr) : new Date();
+        const formattedDate = dateObj.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('today-date-pelanggaran').textContent = formattedDate;
+
+        // Chart.js grafik pelanggaran
+        const ctx = document.getElementById('violationChart').getContext('2d');
+        const violationChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {{ violation_chart_labels|tojson }},
+                datasets: [{
+                    label: 'Jumlah Pelanggaran',
+                    data: {{ violation_chart_data|tojson }},
+                    borderColor: 'rgba(210, 43, 43, 1)', // Red color
+                    backgroundColor: 'rgba(210, 43, 43, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Auto submit filter forms
+        document.getElementById('filter_personnel_id').addEventListener('change', () => document.getElementById('violation-filter-form').submit());
+        document.getElementById('filter_date').addEventListener('change', () => document.getElementById('violation-filter-form').submit());
+        document.getElementById('filter_month').addEventListener('change', () => document.getElementById('filter-month-form').submit());
+    });
+</script>
+{% endblock %}

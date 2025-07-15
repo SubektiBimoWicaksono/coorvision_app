@@ -1,0 +1,4 @@
+Timestamp,Camera,Personnel ID,Personnel Name,Violation Type,Confidence,Image Path
+2025-07-15 10:26:57,Kamera Luar,1,subekti,no-tie,0.11,static/detection_tracking/1e5cb334af344b7f8e00d818405fe6c0.jpg
+2025-07-15 10:26:57,Kamera Luar,2,Rafi,no-tie,0.11,static/detection_tracking/e43b97af62b741e287d3ee95d4c73819.jpg
+2025-07-15 10:26:57,Kamera Luar,7,surya,no-tie,0.11,static/detection_tracking/c21ebba8e8cc45ec8ba262580482cf51.jpg
